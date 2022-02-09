@@ -67,10 +67,10 @@ fn render_result(result: &PogoResult) {
 
 fn make_table(header: &Vec<String>, rows: &Vec<Vec<String>>) -> Table {
     let mut table = Table::new();
-    // table.set_format(*format::consts::FORMAT_NO_LINESEP_WITH_TITLE);
+    table.set_format(*format::consts::FORMAT_NO_LINESEP_WITH_TITLE);
     // table.set_format(*format::consts::FORMAT_CLEAN);
     // table.set_format(*format::consts::FORMAT_NO_BORDER_LINE_SEPARATOR);
-    table.set_format(*format::consts::FORMAT_BORDERS_ONLY);
+    // table.set_format(*format::consts::FORMAT_BORDERS_ONLY);
 
 
     let header = make_header(header);
@@ -87,7 +87,8 @@ fn make_table(header: &Vec<String>, rows: &Vec<Vec<String>>) -> Table {
 
 fn make_header(header: &Vec<String>) -> Row {
     let cells = header.iter().map(|val| {
-        Cell::new(val).style_spec("iBcFd")
+        // Cell::new(val).style_spec("iBcFd")
+        Cell::new(val).style_spec("iFg")
     }).collect();
 
     Row::new(cells)
@@ -96,7 +97,8 @@ fn make_header(header: &Vec<String>) -> Row {
 fn make_row(row: &Vec<String>, stripe: bool) -> Row {
     let cells = row.iter().map(|val| {
         if stripe {
-            return Cell::new(val).style_spec("BwFd");
+            // return Cell::new(val).style_spec("BwFd");
+            return Cell::new(val).style_spec("Fc");
         }
         Cell::new(val)
     }).collect();
