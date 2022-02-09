@@ -55,21 +55,37 @@ fn render_result(result: &PogoResult) {
 
 fn make_table(header: &Vec<String>, rows: &Vec<Vec<String>>) -> Table {
     let mut table = Table::new();
-    table.set_format(*format::consts::FORMAT_NO_BORDER_LINE_SEPARATOR);
+    // table.set_format(*format::consts::FORMAT_NO_LINESEP_WITH_TITLE);
+    // table.set_format(*format::consts::FORMAT_CLEAN);
+    // table.set_format(*format::consts::FORMAT_NO_BORDER_LINE_SEPARATOR);
+    table.set_format(*format::consts::FORMAT_BORDERS_ONLY);
 
-    let header = make_row(header);
+
+    let header = make_header(header);
     table.set_titles(header);
 
-    for row in rows {
-        let row = make_row(row);
+    for (i, row) in rows.iter().enumerate() {
+        let stripe = i % 2 == 0;
+        let row = make_row(row, stripe);
         table.add_row(row);
     }
 
     table
 }
 
-fn make_row(row: &Vec<String>) -> Row {
+fn make_header(header: &Vec<String>) -> Row {
+    let cells = header.iter().map(|val| {
+        Cell::new(val).style_spec("iBcFd")
+    }).collect();
+
+    Row::new(cells)
+}
+
+fn make_row(row: &Vec<String>, stripe: bool) -> Row {
     let cells = row.iter().map(|val| {
+        if stripe {
+            return Cell::new(val).style_spec("BwFd")
+        }
         Cell::new(val)
     }).collect();
 
