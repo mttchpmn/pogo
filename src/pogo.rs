@@ -1,4 +1,6 @@
-use postgres::{Client, NoTls};
+use postgres::{Client, NoTls, Row};
+
+use crate::Loader;
 
 pub struct PogoResult {
     pub header: Vec<String>,
@@ -25,6 +27,12 @@ impl Pogo {
         result
     }
 
+    pub fn run(&mut self, operation_name: &str) -> PogoResult {
+        let operation = Loader::get_operation(operation_name);
+
+        self.run_query(&operation.command)
+    }
+
     fn describe_table(&mut self, table_name: &str) -> PogoResult {
         let sql = format!("\
 SELECT
@@ -36,12 +44,7 @@ FROM
 WHERE
    table_name = '{}';", table_name);
 
-        let rows = self.run_query(&sql);
-
-        PogoResult {
-            header: vec!["TABLE NAME".to_string(), "COLUMN NAME".to_string(), "DATA TYPE".to_string()],
-            rows,
-        }
+       self.run_query(&sql)
     }
 
     fn describe_database(&mut self) -> PogoResult {
@@ -59,29 +62,41 @@ WHERE c.relkind IN ('r','p','v','m','S','f','')
   AND pg_catalog.pg_table_is_visible(c.oid)
 ORDER BY 1,2;
 ";
-        let rows = self.run_query(describe_sql);
 
-        PogoResult {
-            header: vec!["SCHEMA".to_string(), "TABLE NAME".to_string(), "TYPE".to_string()],
-            rows,
-        }
+        self.run_query(describe_sql)
     }
 
-    fn run_query(&mut self, sql: &str) -> Vec<Vec<String>> {
-        let rows = self.client.query(sql, &[]).expect("Error querying DB");
+    fn run_query(&mut self, sql: &str) -> PogoResult {
+        let records = self.client.query(sql, &[]).expect("Error querying DB");
 
-        let mut result = vec![];
+        let mut rows = vec![];
 
-        for row in rows {
+        let header = get_header(&records[0]);
+
+        for row in records {
             let mut row_result = vec![];
+
 
             for i in 0..row.len() {
                 let value: &str = row.get(i);
                 row_result.push(String::from(value));
             }
-            result.push(row_result)
+            rows.push(row_result)
         }
 
-        result
+        PogoResult {
+            header,
+            rows,
+        }
     }
+}
+
+fn get_header(row: &Row) -> Vec<String> {
+    let mut result = vec![];
+    for column in row.columns() {
+        let col = format!("{} ({})", column.name(), column.type_());
+        result.push(col)
+    }
+
+    result
 }
