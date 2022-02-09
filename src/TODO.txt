@@ -1,0 +1,8 @@
+TODO
+
+- Load operations from JSON files in `operations` directory
+- Colorise same result in multiple rows (e.g. all integer types are blue)
+- Display indexes and foreign keys when describing table
+- Output results to  CSV file with `--output` flag
+- Config file for storing connection string (.toml)
+- Handle connections to multiple databases (prod, staging etc)

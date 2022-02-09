@@ -3,6 +3,7 @@ use prettytable::{Cell, format, Row, Table};
 
 use loader::{Loader, Operation};
 use pogo::Pogo;
+
 use crate::pogo::PogoResult;
 
 mod pogo;
@@ -17,6 +18,11 @@ fn main() {
         .subcommand(App::new("describe")
             .about("Describe database or table structure")
             .arg(Arg::new("table_name")))
+
+        .subcommand(App::new("query")
+            .about("Executes arbitrary SQL query")
+            .arg(Arg::new("sql")
+                .required(true)))
 
         .subcommand(App::new("list")
             .about("Lists available operations"))
@@ -42,7 +48,13 @@ fn main() {
             let result = pogo.run(operation_name);
 
             render_result(&result);
-        },
+        }
+        Some(("query", sub_matches)) => {
+            let sql = sub_matches.value_of("sql").unwrap();
+            let result = pogo.run_query(sql);
+
+            render_result(&result);
+        }
         Some(("list", _sub_matches)) => println!("List command not yet supported"),
         _ => unreachable!()
     }
@@ -84,7 +96,7 @@ fn make_header(header: &Vec<String>) -> Row {
 fn make_row(row: &Vec<String>, stripe: bool) -> Row {
     let cells = row.iter().map(|val| {
         if stripe {
-            return Cell::new(val).style_spec("BwFd")
+            return Cell::new(val).style_spec("BwFd");
         }
         Cell::new(val)
     }).collect();

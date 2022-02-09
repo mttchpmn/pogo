@@ -70,19 +70,19 @@ ORDER BY 1,2;
         self.run_query(describe_sql)
     }
 
-    fn run_query(&mut self, sql: &str) -> PogoResult {
+    pub fn run_query(&mut self, sql: &str) -> PogoResult {
         let records = self.client.query(sql, &[]).expect("Error querying DB");
 
         let mut rows = vec![];
 
-        let header = get_header(&records[0]);
+        let header = self.get_header(&records[0]);
 
         for row in records {
             let mut row_result = vec![];
 
             for i in 0..row.len() {
                 let column_type = row.columns().get(i).unwrap().type_();
-                let value = render_value(column_type, &row, i);
+                let value = self.render_value(column_type, &row, i);
 
                 row_result.push(value);
             }
@@ -94,35 +94,36 @@ ORDER BY 1,2;
             rows,
         }
     }
-}
 
-fn render_value(column_type: &Type, row: &Row, index: usize) -> String {
-    let value = match column_type {
-        &Type::VARCHAR | &Type::TEXT => parse_value::<&str>(row, index),
-        &Type::UUID => parse_value::<Uuid>(&row, index),
-        &Type::INT4 => parse_value::<i32>(&row, index),
-        _ => "ERR - Couldn't parse value".to_string()
-    };
 
-    value
-}
+    fn render_value(&self, column_type: &Type, row: &Row, index: usize) -> String {
+        let value = match column_type {
+            &Type::VARCHAR | &Type::TEXT => self.parse_value::<&str>(row, index),
+            &Type::UUID => self.parse_value::<Uuid>(&row, index),
+            &Type::INT4 => self.parse_value::<i32>(&row, index),
+            _ => "ERR - Couldn't parse value".to_string()
+        };
 
-fn parse_value<'a, T>(row: &'a Row, index: usize) -> String
-    where T: FromSql<'a> + Display {
-    let val: Option<T> = row.try_get(index).unwrap_or(Option::None);
-
-    match val {
-        None => " ".to_string(),
-        Some(val) => val.to_string()
-    }
-}
-
-fn get_header(row: &Row) -> Vec<String> {
-    let mut result = vec![];
-    for column in row.columns() {
-        let col = format!("{} ({})", column.name(), column.type_());
-        result.push(col)
+        value
     }
 
-    result
+    fn parse_value<'a, T>(&self, row: &'a Row, index: usize) -> String
+        where T: FromSql<'a> + Display {
+        let val: Option<T> = row.try_get(index).unwrap_or(Option::None);
+
+        match val {
+            None => " ".to_string(),
+            Some(val) => val.to_string()
+        }
+    }
+
+    fn get_header(&self, row: &Row) -> Vec<String> {
+        let mut result = vec![];
+        for column in row.columns() {
+            let col = format!("{} ({})", column.name(), column.type_());
+            result.push(col)
+        }
+
+        result
+    }
 }

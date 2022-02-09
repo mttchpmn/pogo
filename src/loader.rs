@@ -21,7 +21,7 @@ impl Loader {
         let example_operation = Operation {
             name: "get-client-names".to_string(),
             description: "Gets all client names".to_string(),
-            command: "SELECT long_name FROM client".to_string()
+            command: "SELECT * FROM client".to_string()
         };
 
         example_operation
