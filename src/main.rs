@@ -7,7 +7,7 @@ mod pogo;
 fn main() {
     let connection_string = "postgresql://postgres:postgres@localhost/cdd";
     let mut pogo = Pogo::new(connection_string);
-    let result = pogo.describe();
+    let result = pogo.describe(Option::Some("client"));
     let table = make_table(&result.header, &result.rows);
 
     table.printstd();

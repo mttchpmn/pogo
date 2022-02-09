@@ -1,6 +1,5 @@
 use postgres::{Client, NoTls};
 
-
 pub struct PogoResult {
     pub header: Vec<String>,
     pub rows: Vec<Vec<String>>,
@@ -17,7 +16,35 @@ impl Pogo {
         Pogo { client }
     }
 
-    pub fn describe(&mut self) -> PogoResult {
+    pub fn describe(&mut self, table_name: Option<&str>) -> PogoResult {
+        let result = match table_name {
+            Some(table_name) => self.describe_table(table_name),
+            None => self.describe_database()
+        };
+
+        result
+    }
+
+    fn describe_table(&mut self, table_name: &str) -> PogoResult {
+        let sql = format!("\
+SELECT
+   table_name,
+   column_name,
+   data_type
+FROM
+   information_schema.columns
+WHERE
+   table_name = '{}';", table_name);
+
+        let rows = self.run_query(&sql);
+
+        PogoResult {
+            header: vec!["TABLE NAME".to_string(), "COLUMN NAME".to_string(), "DATA TYPE".to_string()],
+            rows,
+        }
+    }
+
+    fn describe_database(&mut self) -> PogoResult {
         let describe_sql = "\
 SELECT n.nspname as \"Schema\",
   c.relname as \"Name\",
@@ -47,9 +74,6 @@ ORDER BY 1,2;
 
         for row in rows {
             let mut row_result = vec![];
-
-            let foo: &str = row.get(1);
-            println!("{}", foo);
 
             for i in 0..row.len() {
                 let value: &str = row.get(i);
