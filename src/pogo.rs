@@ -101,7 +101,10 @@ ORDER BY 1,2;
             &Type::VARCHAR | &Type::TEXT => self.parse_value::<&str>(row, index),
             &Type::UUID => self.parse_value::<Uuid>(&row, index),
             &Type::INT4 => self.parse_value::<i32>(&row, index),
-            _ => "ERR - Couldn't parse value".to_string()
+            col_type => {
+            // format!("ERR - Couldn't parse type: `{}`", col_type).to_string()
+               self.parse_value::<&str>(row, index)
+            }
         };
 
         value
