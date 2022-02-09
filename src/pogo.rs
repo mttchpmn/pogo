@@ -1,4 +1,8 @@
+use std::fmt::Display;
+
 use postgres::{Client, NoTls, Row};
+use postgres::types::{FromSql, Type};
+use uuid::Uuid;
 
 use crate::Loader;
 
@@ -44,7 +48,7 @@ FROM
 WHERE
    table_name = '{}';", table_name);
 
-       self.run_query(&sql)
+        self.run_query(&sql)
     }
 
     fn describe_database(&mut self) -> PogoResult {
@@ -76,10 +80,11 @@ ORDER BY 1,2;
         for row in records {
             let mut row_result = vec![];
 
-
             for i in 0..row.len() {
-                let value: &str = row.get(i);
-                row_result.push(String::from(value));
+                let column_type = row.columns().get(i).unwrap().type_();
+                let value = render_value(column_type, &row, i);
+
+                row_result.push(value);
             }
             rows.push(row_result)
         }
@@ -88,6 +93,27 @@ ORDER BY 1,2;
             header,
             rows,
         }
+    }
+}
+
+fn render_value(column_type: &Type, row: &Row, index: usize) -> String {
+    let value = match column_type {
+        &Type::VARCHAR | &Type::TEXT => parse_value::<&str>(row, index),
+        &Type::UUID => parse_value::<Uuid>(&row, index),
+        &Type::INT4 => parse_value::<i32>(&row, index),
+        _ => "ERR - Couldn't parse value".to_string()
+    };
+
+    value
+}
+
+fn parse_value<'a, T>(row: &'a Row, index: usize) -> String
+    where T: FromSql<'a> + Display {
+    let val: Option<T> = row.try_get(index).unwrap_or(Option::None);
+
+    match val {
+        None => " ".to_string(),
+        Some(val) => val.to_string()
     }
 }
 
