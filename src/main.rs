@@ -1,3 +1,5 @@
+use std::fs::File;
+
 use clap::{App, AppSettings, Arg};
 use prettytable::{Cell, format, Row, Table};
 
@@ -14,6 +16,11 @@ fn main() {
         .setting(AppSettings::ArgRequiredElseHelp)
         .version("0.1")
         .about("Utility for executing common operations with a PSQL database")
+        .arg(Arg::new("output")
+            .short('o')
+            .long("output")
+            .value_name("FILENAME")
+            .help("Write result to .csv with specified name"))
 
         .subcommand(App::new("describe")
             .about("Describe database or table structure")
@@ -36,37 +43,51 @@ fn main() {
     let connection_string = "postgresql://postgres:postgres@localhost/cdd";
     let mut pogo = Pogo::new(connection_string);
 
-    match matches.subcommand() {
+    let result = match matches.subcommand() {
         Some(("describe", sub_matches)) => {
             let table_name = sub_matches.value_of("table_name");
             let result = pogo.describe(table_name);
 
-            render_result(&result);
+            result
         }
         Some(("run", sub_matches)) => {
             let operation_name = sub_matches.value_of("operation_name").unwrap();
             let result = pogo.run(operation_name);
 
-            render_result(&result);
+            result
         }
         Some(("query", sub_matches)) => {
             let sql = sub_matches.value_of("sql").unwrap();
             let result = pogo.run_query(sql);
 
-            render_result(&result);
+            result
         }
         Some(("list", _sub_matches)) => {
             let result = pogo.list();
 
-            render_result(&result);
-        },
+            result
+        }
         _ => unreachable!()
-    }
+    };
+
+    let file_name = matches.value_of("output");
+
+    render_result(&result, file_name);
 }
 
-fn render_result(result: &PogoResult) {
+fn render_result(result: &PogoResult, file_name: Option<&str>) {
     let table = make_table(&result.header, &result.rows);
-    table.printstd();
+
+    match file_name {
+        None => {
+            table.printstd();
+        }
+        Some(name) => {
+            let out = File::create(name).expect("Error creating output file");
+            table.to_csv(out).expect("Error writing to output file");
+            println!("Result written to {}", name);
+        }
+    };
 }
 
 fn make_table(header: &Vec<String>, rows: &Vec<Vec<String>>) -> Table {
