@@ -1,3 +1,4 @@
+use std::fs;
 use std::fs::File;
 
 use clap::{App, AppSettings, Arg};
@@ -5,11 +6,13 @@ use prettytable::{Cell, format, Row, Table};
 
 use loader::{Loader, Operation};
 use pogo::Pogo;
+use crate::config::Config;
 
 use crate::pogo::PogoResult;
 
 mod pogo;
 mod loader;
+mod config;
 
 fn main() {
     let app = App::new("pogo")
@@ -40,8 +43,9 @@ fn main() {
                 .required(true)));
     let matches = &app.get_matches();
 
-    let connection_string = "postgresql://postgres:postgres@localhost/cdd";
-    let mut pogo = Pogo::new(connection_string);
+    Config::ensure_pogo_dir_exists();
+    let connection_string = Config::get_connection_string();
+    let mut pogo = Pogo::new(&connection_string);
 
     let result = match matches.subcommand() {
         Some(("describe", sub_matches)) => {
