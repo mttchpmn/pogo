@@ -33,7 +33,10 @@ impl Loader {
     }
 
     fn get_file_paths() -> Vec<PathBuf> {
-        let file_paths = fs::read_dir("operations")
+        let home = std::env::var("HOME").unwrap();
+        let path =  home + "/.pogo/operations";
+
+        let file_paths = fs::read_dir(path)
             .expect("Couldn't read `operations` directory")
             .map(|x| { x.map(|y| {y.path()})})
             .collect::<Result<Vec<PathBuf>, io::Error>>().expect("Couldn't read files in directory");
