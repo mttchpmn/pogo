@@ -55,7 +55,11 @@ fn main() {
 
             render_result(&result);
         }
-        Some(("list", _sub_matches)) => println!("List command not yet supported"),
+        Some(("list", _sub_matches)) => {
+            let result = pogo.list();
+
+            render_result(&result);
+        },
         _ => unreachable!()
     }
 }

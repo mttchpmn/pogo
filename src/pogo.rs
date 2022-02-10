@@ -1,10 +1,11 @@
 use std::fmt::Display;
+use std::path::PathBuf;
 
 use postgres::{Client, NoTls, Row};
 use postgres::types::{FromSql, Type};
 use uuid::Uuid;
 
-use crate::Loader;
+use crate::{Loader, Operation};
 
 pub struct PogoResult {
     pub header: Vec<String>,
@@ -13,13 +14,15 @@ pub struct PogoResult {
 
 pub struct Pogo {
     client: Client,
+    operations: Vec<Operation>
 }
 
 impl Pogo {
     pub fn new(connection_string: &str) -> Self {
         let client = Client::connect(connection_string, NoTls).expect("Error connecting to DB");
+        let operations = Loader::get_operations();
 
-        Pogo { client }
+        Pogo { client, operations }
     }
 
     pub fn describe(&mut self, table_name: Option<&str>) -> PogoResult {
@@ -31,10 +34,29 @@ impl Pogo {
         result
     }
 
+    pub fn list(&mut self) -> PogoResult {
+        let header = vec!["OPERATION NAME".to_string(), "DESCRIPTION".to_string()];
+        let mut rows = vec![];
+
+        for operation in &self.operations {
+            let row = vec![operation.name.clone(), operation.description.clone()];
+            rows.push(row);
+        }
+
+        PogoResult { header, rows}
+    }
+
     pub fn run(&mut self, operation_name: &str) -> PogoResult {
-        let operation = Loader::get_operation(operation_name);
+        let operation = self.get_operation(operation_name);
 
         self.run_query(&operation.command)
+    }
+
+    fn get_operation(&self, operation_name: &str) -> Operation {
+        // TODO - Remove need to clone in this method
+        let Operation{name, command, description} = &self.operations.iter().find(|x| {x.name == operation_name}).expect("Couldn't find operation");
+
+        return Operation { name: name.clone(), command: command.clone(), description: description.clone()}
     }
 
     fn describe_table(&mut self, table_name: &str) -> PogoResult {
@@ -94,7 +116,6 @@ ORDER BY 1,2;
             rows,
         }
     }
-
 
     fn render_value(&self, column_type: &Type, row: &Row, index: usize) -> String {
         let value = match column_type {
