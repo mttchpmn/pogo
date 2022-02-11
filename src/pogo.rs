@@ -55,6 +55,44 @@ impl Pogo {
         self.run_query(&operation.command)
     }
 
+    pub fn run_query(&mut self, sql: &str) -> PogoResult {
+        let records = self.client.query(sql, &[]).expect("Error querying DB");
+
+        let mut rows = vec![];
+
+        let header = self.get_header(&records[0]);
+
+        for row in records {
+            let mut row_result = vec![];
+
+            for i in 0..row.len() {
+                let column_type = row.columns().get(i).unwrap().type_();
+                let value = self.render_value(column_type, &row, i);
+
+                row_result.push(value);
+            }
+            rows.push(row_result)
+        }
+
+        PogoResult {
+            header,
+            rows,
+        }
+    }
+
+    pub fn get_references(&mut self, table_name: &str) -> PogoResult {
+        let sql = format!("\
+        select
+  (select r.relname from pg_class r where r.oid = c.conrelid) as table,
+  (select array_agg(attname) from pg_attribute
+   where attrelid = c.conrelid and ARRAY[attnum] <@ c.conkey) as col,
+  (select r.relname from pg_class r where r.oid = c.confrelid) as ftable
+from pg_constraint c
+where c.confrelid = (select oid from pg_class where relname = '{}');", table_name);
+
+        self.run_query(&sql)
+    }
+
     fn get_operation(&self, operation_name: &str) -> Operation {
         // TODO - Remove need to clone in this method
         let Operation { name, command, description } = &self.operations.iter().find(|x| { x.name == operation_name }).expect("Couldn't find operation");
@@ -145,7 +183,7 @@ ORDER BY 1,2;
         self.run_query(describe_sql)
     }
 
-    pub fn get_foreign_keys_for_table(&mut self, table_name: &str) -> PogoResult {
+    fn get_foreign_keys_for_table(&mut self, table_name: &str) -> PogoResult {
         let sql = format!("\
 SELECT
     tc.table_name,
@@ -166,38 +204,19 @@ WHERE tc.constraint_type = 'FOREIGN KEY' AND tc.table_name='{}'; ", table_name);
         result
     }
 
-    pub fn run_query(&mut self, sql: &str) -> PogoResult {
-        let records = self.client.query(sql, &[]).expect("Error querying DB");
-
-        let mut rows = vec![];
-
-        let header = self.get_header(&records[0]);
-
-        for row in records {
-            let mut row_result = vec![];
-
-            for i in 0..row.len() {
-                let column_type = row.columns().get(i).unwrap().type_();
-                let value = self.render_value(column_type, &row, i);
-
-                row_result.push(value);
-            }
-            rows.push(row_result)
-        }
-
-        PogoResult {
-            header,
-            rows,
-        }
-    }
 
     fn render_value(&self, column_type: &Type, row: &Row, index: usize) -> String {
         let value = match column_type {
             &Type::VARCHAR | &Type::TEXT => self.parse_value::<&str>(row, index),
             &Type::UUID => self.parse_value::<Uuid>(&row, index),
             &Type::INT4 => self.parse_value::<i32>(&row, index),
+            &Type::NAME_ARRAY => {
+                let val:  Vec<&str> = row.try_get(index).unwrap();
+
+                val.join(", ")
+            },
             col_type => {
-                // format!("ERR - Couldn't parse type: `{}`", col_type).to_string()
+                // println!("ERR - Couldn't parse type: `{:?}`", col_type);
                 self.parse_value::<&str>(row, index)
             }
         };

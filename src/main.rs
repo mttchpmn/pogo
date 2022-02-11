@@ -6,8 +6,8 @@ use prettytable::{Cell, format, Row, Table};
 
 use loader::{Loader, Operation};
 use pogo::Pogo;
-use crate::config::Config;
 
+use crate::config::Config;
 use crate::pogo::PogoResult;
 
 mod pogo;
@@ -19,11 +19,6 @@ fn main() {
         .setting(AppSettings::ArgRequiredElseHelp)
         .version("0.1")
         .about("Utility for executing common operations with a PSQL database")
-        .arg(Arg::new("output")
-            .short('o')
-            .long("output")
-            .value_name("FILENAME")
-            .help("Write result to .csv with specified name"))
 
         .subcommand(App::new("describe")
             .about("Describe database or table structure")
@@ -31,6 +26,11 @@ fn main() {
 
         .subcommand(App::new("query")
             .about("Executes arbitrary SQL query")
+            .arg(Arg::new("output")
+                .short('o')
+                .long("output")
+                .value_name("FILENAME")
+                .help("Write result to .csv with specified name"))
             .arg(Arg::new("sql")
                 .required(true)))
 
@@ -39,6 +39,11 @@ fn main() {
 
         .subcommand(App::new("run")
             .about("Runs a user defined operation")
+            .arg(Arg::new("output")
+                .short('o')
+                .long("output")
+                .value_name("FILENAME")
+                .help("Write result to .csv with specified name"))
             .arg(Arg::new("operation_name")
                 .required(true)));
     let matches = &app.get_matches();
@@ -47,36 +52,40 @@ fn main() {
     let connection_string = Config::get_connection_string();
     let mut pogo = Pogo::new(&connection_string);
 
-    let result = match matches.subcommand() {
+    match matches.subcommand() {
         Some(("describe", sub_matches)) => {
             let table_name = sub_matches.value_of("table_name");
             let result = pogo.describe(table_name);
 
-            result
+            render_result(&result, Option::None);
+
+            if table_name.is_some() {
+                println!("\nREFERENCED BY:");
+                let references = pogo.get_references(table_name.unwrap());
+                render_result(&references, Option::None);
+            }
         }
         Some(("run", sub_matches)) => {
             let operation_name = sub_matches.value_of("operation_name").unwrap();
+            let file_name = sub_matches.value_of("file_name");
             let result = pogo.run(operation_name);
 
-            result
+            render_result(&result, file_name);
         }
         Some(("query", sub_matches)) => {
             let sql = sub_matches.value_of("sql").unwrap();
             let result = pogo.run_query(sql);
+            let file_name = sub_matches.value_of("file_name");
 
-            result
+            render_result(&result, file_name);
         }
         Some(("list", _sub_matches)) => {
             let result = pogo.list();
 
-            result
+            render_result(&result, Option::None);
         }
         _ => unreachable!()
     };
-
-    let file_name = matches.value_of("output");
-
-    render_result(&result, file_name);
 }
 
 fn render_result(result: &PogoResult, file_name: Option<&str>) {
