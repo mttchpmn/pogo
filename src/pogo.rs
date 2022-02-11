@@ -19,7 +19,7 @@ pub struct Pogo {
 
 impl Pogo {
     pub fn new(connection_string: &str) -> Self {
-        let client = Client::connect(connection_string, NoTls).expect("Error connecting to DB");
+        let client = Client::connect(connection_string, NoTls).expect("Error connecting to DB - is your connection string set properly?");
         let operations = Loader::get_operations();
 
         Pogo { client, operations }

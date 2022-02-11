@@ -1,7 +1,5 @@
 TODO
 
-- Create .pogo directory in home (ensure exists)
-- Support pogo config
 - Handle connections to multiple databases (prod, staging etc)
 
 - Display indexes and foreign keys when describing table
